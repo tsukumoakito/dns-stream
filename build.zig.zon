@@ -1,0 +1,17 @@
+.{
+    .name = .dns_stream,
+    .version = "1.0.2",
+    .release_date_unix = "1788721338",
+    .fingerprint = 0x194e86d8457cba15,
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "doc",
+        "LICENSE",
+        "README.md",
+        "README_ja.md",
+    },
+}

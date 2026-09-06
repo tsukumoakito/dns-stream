@@ -1,0 +1,15 @@
+version = 1
+
+[[annotations]]
+path = [
+    "*",
+    ".gitignore",
+    "doc/**",
+    "src/**",
+    ".editorconfig",
+    ".envrc",
+    "build.zig",
+    "build.zig.zon"
+]
+SPDX-FileCopyrightText = "2026 TSUKUMO Akito <tsukumoakito99@duck.com>"
+SPDX-License-Identifier = "MIT"

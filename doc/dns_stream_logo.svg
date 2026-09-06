@@ -1,0 +1,25 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Pattern (Stream Waves) -->
+  <defs>
+    <linearGradient id="streamGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d1ff;stop-opacity:0.1" />
+      <stop offset="50%" style="stop-color:#00d1ff;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#00d1ff;stop-opacity:0.1" />
+    </linearGradient>
+  </defs>
+  <rect x="50" y="50" width="1100" height="300" rx="30" fill="#0a0a0a" />
+  <path d="M 50 200 Q 325 100 600 200 T 1150 200" fill="none" stroke="url(#streamGrad)" stroke-width="40" stroke-linecap="round" />
+
+  <!-- Outer Frame -->
+  <rect x="50" y="50" width="1100" height="300" rx="30" fill="none" stroke="#00d1ff" stroke-width="4" stroke-opacity="0.8" />
+
+  <!-- Text Block -->
+  <g font-family="'JetBrains Mono', 'Fira Code', monospace" font-weight="bold" text-anchor="middle">
+    <!-- Main Title: DNS Stream (Neon Glow Effect) -->
+    <text x="600" y="215" font-size="160" fill="none" stroke="#00d1ff" stroke-width="2" stroke-opacity="0.3">DNS Stream</text>
+    <text x="600" y="210" font-size="160" fill="#ffffff">DNS Stream</text>
+
+    <!-- Subtitle (Cyber Cyan) -->
+    <text x="600" y="305" font-size="38" fill="#00d1ff" letter-spacing="4" font-weight="normal">Unified Real-time DNS Observer</text>
+  </g>
+</svg>

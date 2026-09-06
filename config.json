@@ -1,0 +1,27 @@
+{
+    "api_url": "http://127.0.0.1:80",
+    "log_path": "/var/lib/adguardhome/data/querylog.json",
+    "user": "admin",
+    "pass": "your_password_here",
+    "vault_path": null,
+    "insecure": false,
+    "log_mode": "auto",
+    "drop_user": null,
+    "start_time": null,
+    "end_time": null,
+    "user_agent": null,
+    "polling_s": 1,
+    "api_limit": 500,
+    "no_color": false,
+    "scan_limit_mb": 800,
+    "catchup_limit": null,
+    "max_seen": 64,
+    "time_offset": null,
+    "proxy": "none",
+    "colors": {
+        "127.0.0.1": "gray",
+        "192.168.*": "blue"
+    },
+    "name": [null],
+    "ip": [null]
+}
