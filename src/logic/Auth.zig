@@ -156,7 +156,7 @@ pub fn ensureAuthenticated(
             }
 
             if (Store.debug_mode) {
-                debug.print("\x1b[90m[DEBUG]\x1b[0m Authentication attempt failed: {any}\n", .{err});
+                debug.print("\x1b[91m[DEBUG] performLogin failed with error: {any}\x1b[0m\n", .{err}); // 追加
             }
 
             if (Store.should_exit) break;

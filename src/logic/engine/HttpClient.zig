@@ -213,7 +213,12 @@ pub fn fetchApiToBuffer(client: *Client, url_str: []const u8, auth: []const u8, 
     if (Store.debug_mode) {
         var s_buf: [32]u8 = undefined;
         const size_str = Store.formatSize(&s_buf, body_len);
-        debug.print("\x1b[90m[DEBUG]\x1b[0m API Request: {s} (Buffer: {s})\n", .{ url_str, size_str });
+        debug.print("\x1b[90m[DEBUG]\x1b[0m API Request: {s} (Buffer: {s}, NetClientFBA used: {d} / {d} bytes)\n", .{
+            url_str,
+            size_str,
+            Store.net_client_fba.end_index,
+            Store.net_client_fba.buffer.len,
+        });
     }
 
     return buffer[0..body_len];
@@ -226,6 +231,7 @@ pub fn performLogin(client: *Client, url_str: []const u8, user: []const u8, pass
 
     if (Store.debug_mode) {
         debug.print("\x1b[90m[DEBUG]\x1b[0m Attempting Login: {s}\n", .{url_str});
+        debug.print("\x1b[90m[DEBUG]\x1b[0m performLogin: net_req_fba index={d}, len={d}\n", .{ Store.net_req_fba.end_index, Store.net_req_fba.buffer.len });
     }
 
     const conn = try getPinnedConnection(client, uri);

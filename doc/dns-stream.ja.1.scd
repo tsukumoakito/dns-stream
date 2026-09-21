@@ -1,4 +1,4 @@
-dns-stream(1) "1.0.2" "dns-stream ユーザマニュアル"
+dns-stream(1) "1.0.3" "dns-stream ユーザマニュアル"
 
 # 名前
 

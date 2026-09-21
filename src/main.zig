@@ -48,7 +48,7 @@ pub fn panic(msg: []const u8, stack_trace: ?*builtin.StackTrace, ret_addr: ?usiz
 
 const DiagContext = RuntimeSupport.getDiagContext();
 
-var persistent_storage: [512 * 1024]u8 align(16) = undefined;
+var persistent_storage: [1024 * 1024]u8 align(16) = undefined;
 
 var g_io: Io = undefined;
 var g_group: *Group = undefined;
@@ -145,34 +145,6 @@ pub fn main(init: process.Init) !void {
         break :blk system.getuid();
     };
 
-    const winner_base_url = blk: {
-        const target_list = if (config.api_urls.len > 0) config.api_urls else @constCast(&[_][]const u8{config.api_url});
-        const reachable = Engine.findFirstReachableUrl(sniper_io, target_list) catch |err| {
-            if (err == error.OperationAborted) return;
-
-            debug.print("\n\x1b[91m[ERROR]\x1b[0m Failed to reach any valid API endpoint.\n", .{});
-            debug.print("\x1b[93m[HINT]\x1b[0m Please verify the following:\n", .{});
-            debug.print("  - Is the server address or port correct?\n", .{});
-            debug.print("  - Is the network or VPN connection active?\n", .{});
-            debug.print("  - Is the proxy configuration (if any) accurate?\n", .{});
-            debug.print("  - If using HTTPS, does the server respond to TLS handshakes?\n", .{});
-            debug.print("\n\x1b[90m(Technical details: {any})\x1b[0m\n", .{err});
-            return;
-        };
-
-        break :blk reachable;
-    };
-
-    var url_full_buf: [512]u8 = undefined;
-    const final_url = if (mem.indexOf(u8, winner_base_url, "/control") == null) blk: {
-        const suffix = if (mem.endsWith(u8, winner_base_url, "/")) "control" else "/control";
-        break :blk try fmt.bufPrint(&url_full_buf, "{s}{s}", .{ winner_base_url, suffix });
-    } else winner_base_url;
-
-    if (Store.dns_resolve_len == 0) {
-        try Engine.resolveTargetIp(sniper_io, final_url);
-    }
-
     var http_client = Client{
         .allocator = Store.net_client_fba.allocator(),
         .io = sniper_io,
@@ -188,6 +160,9 @@ pub fn main(init: process.Init) !void {
         Crypt.GpgDecrypter.removeFromKeyring(Store.keyring_key_name) catch {};
     }
 
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Initializing default proxies...\n", .{});
+    }
     try http_client.initDefaultProxies(arena, &env_map);
 
     if (config.proxy) |p| {
@@ -230,16 +205,83 @@ pub fn main(init: process.Init) !void {
     }
 
     if (!config.insecure) {
-        try http_client.ca_bundle.rescan(base_allocator, sniper_io, Clock.real.now(sniper_io));
+        if (Store.debug_mode) {
+            debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Rescanning CA bundle using base_allocator...\n", .{});
+            debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] base_allocator capacity check: about to load system certificates into 512KB fixed buffer.\n", .{});
+        }
+
+        http_client.ca_bundle.rescan(base_allocator, sniper_io, Clock.real.now(sniper_io)) catch |err| {
+            if (Store.debug_mode) {
+                debug.print("\x1b[91m[DEBUG]\x1b[0m ❌ CA bundle rescan failed with: {any}\n", .{err});
+                debug.print("\x1b[93m[HINT]\x1b[0m The system CA bundle is likely too large for the 512KB fixed buffer (persistent_storage).\n", .{});
+            }
+            return err;
+        };
+
+        if (Store.debug_mode) {
+            debug.print("\x1b[92m[DEBUG]\x1b[0m [Main Flow] CA bundle rescan completed successfully (Loaded certificates: {d}).\n", .{http_client.ca_bundle.map.count()});
+        }
+
+        Store.shared_ca_bundle = &http_client.ca_bundle;
+    }
+
+    const winner_base_url = blk: {
+        const target_list = if (config.api_urls.len > 0) config.api_urls else @constCast(&[_][]const u8{config.api_url});
+        const reachable = Engine.findFirstReachableUrl(sniper_io, target_list) catch |err| {
+            if (err == error.OperationAborted) return;
+
+            debug.print("\n\x1b[91m[ERROR]\x1b[0m Failed to reach any valid API endpoint.\n", .{});
+            debug.print("\x1b[93m[HINT]\x1b[0m Please verify the following:\n", .{});
+            debug.print("  - Is the server address or port correct?\n", .{});
+            debug.print("  - Is the network or VPN connection active?\n", .{});
+            debug.print("  - Is the proxy configuration (if any) accurate?\n", .{});
+            debug.print("  - If using HTTPS, does the server respond to TLS handshakes?\n", .{});
+            debug.print("\n\x1b[90m(Technical details: {any})\x1b[0m\n", .{err});
+            return;
+        };
+
+        break :blk reachable;
+    };
+
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] winner_base_url = {s}\n", .{winner_base_url});
+    }
+
+    var url_full_buf: [512]u8 = undefined;
+    const final_url = if (mem.indexOf(u8, winner_base_url, "/control") == null) blk: {
+        const suffix = if (mem.endsWith(u8, winner_base_url, "/")) "control" else "/control";
+        break :blk try fmt.bufPrint(&url_full_buf, "{s}{s}", .{ winner_base_url, suffix });
+    } else winner_base_url;
+
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] final_url = {s}\n", .{final_url});
+    }
+
+    if (Store.dns_resolve_len == 0) {
+        if (Store.debug_mode) {
+            debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Resolving target IP for final_url...\n", .{});
+        }
+        try Engine.resolveTargetIp(sniper_io, final_url);
+        if (Store.debug_mode) {
+            debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Target IP resolved successfully.\n", .{});
+        }
     }
 
     var login_url_buf: [512]u8 = undefined;
     const login_endpoint = try fmt.bufPrint(&login_url_buf, "{s}/login", .{final_url});
 
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] login_endpoint = {s}\n", .{login_endpoint});
+    }
+
     const stdout_file = File.stdout();
     const terminal_mode = try Terminal.Mode.detect(io, stdout_file, config.no_color, false);
     var stdout_writer_wrapper = stdout_file.writer(io, &.{});
     var terminal_obj = Terminal{ .writer = &stdout_writer_wrapper.interface, .mode = terminal_mode };
+
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Entering ensureAuthenticated...\n", .{});
+    }
 
     Auth.ensureAuthenticated(
         &terminal_obj,
@@ -251,6 +293,9 @@ pub fn main(init: process.Init) !void {
         login_endpoint,
         init.minimal.environ,
     ) catch |err| {
+        if (Store.debug_mode) {
+            debug.print("\x1b[91m[DEBUG]\x1b[0m [Main Flow] ensureAuthenticated failed with error: {any}\n", .{err});
+        }
         if (err == error.OperationAborted or Store.should_exit) {
             try stdout_file.writeStreamingAll(sniper_io, "\n" ++ Format.clr_yellow ++ "👋 Monitoring cancelled by user." ++ Format.clr_reset ++ "\n");
             return;
@@ -259,15 +304,30 @@ pub fn main(init: process.Init) !void {
         return err;
     };
 
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] ensureAuthenticated completed successfully.\n", .{});
+    }
+
     if (Store.should_exit) return;
 
     {
         var clients_url_buf: [512]u8 = undefined;
         const clients_endpoint = try fmt.bufPrint(&clients_url_buf, "{s}/clients", .{final_url});
+        if (Store.debug_mode) {
+            debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Fetching client map from {s}...\n", .{clients_endpoint});
+        }
         try Engine.fetchClientMap(base_allocator, &http_client, clients_endpoint);
     }
 
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Initializing Session...\n", .{});
+    }
+
     const sess = try Session.initialize(sniper_io, arena, &http_client, &config, final_url);
+
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Printing Summary...\n", .{});
+    }
 
     try Summary.print(&terminal_obj, sniper_io, config, final_url, sess.session_start, sess.effective_start);
 
@@ -275,6 +335,10 @@ pub fn main(init: process.Init) !void {
     try LogLine.printHeader(sniper_io, stdout_file, initial_winsize.col, config.no_color);
 
     const polling_ms = @as(u64, @trunc(config.polling_s * 1000.0));
+
+    if (Store.debug_mode) {
+        debug.print("\x1b[90m[DEBUG]\x1b[0m [Main Flow] Starting Stream loop...\n", .{});
+    }
 
     try Stream.start(
         &io_group,

@@ -35,6 +35,8 @@ pub var proxy_type: ProxyType = .auto;
 pub var proxy_url: [512]u8 = [_]u8{0} ** 512;
 pub var proxy_url_len: usize = 0;
 
+pub var shared_ca_bundle: ?*crypto.Certificate.Bundle = null;
+
 pub const SocksContext = struct {
     proxy_host: []const u8,
     proxy_port: u16,

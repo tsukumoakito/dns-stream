@@ -23,6 +23,7 @@ const Client = http.Client;
 const Allocator = mem.Allocator;
 const FixedBufferAllocator = heap.FixedBufferAllocator;
 
+const Store = @import("../data/Store.zig");
 const Network = @import("Network.zig");
 
 pub const DNSStrategy = enum { local, remote };
@@ -76,21 +77,33 @@ pub const ProbeTask = struct {
     debug: bool = false,
 
     pub fn execute(self: *ProbeTask) !ProbeResult {
-        const uri = try Uri.parse(self.target_url);
+        const uri = Uri.parse(self.target_url) catch |err| {
+            if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] Uri.parse failed: {any}\x1b[0m\n", .{err});
+            return err;
+        };
         const is_https = mem.eql(u8, uri.scheme, "https");
         const port = uri.port orelse (if (is_https) @as(u16, 443) else @as(u16, 80));
 
         var h_buf: [HostName.max_len]u8 = undefined;
-        const hostname = try uri.getHost(&h_buf);
+        const hostname = uri.getHost(&h_buf) catch |err| {
+            if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] uri.getHost failed: {any}\x1b[0m\n", .{err});
+            return err;
+        };
 
         var target_addr: ?IpAddress = null;
         var dns_identity: ?[]const u8 = null;
         errdefer if (dns_identity) |id| self.allocator.free(id);
         const is_ip_target = Network.isIpAddress(hostname.bytes);
         if (self.forced_ip) |f_ip| {
-            target_addr = try IpAddress.parse(f_ip, port);
+            target_addr = IpAddress.parse(f_ip, port) catch |err| {
+                if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] IpAddress.parse failed: {any}\x1b[0m\n", .{err});
+                return err;
+            };
         } else if (self.dns_strategy == .local or is_ip_target) {
-            const res = resolveHostToIp(self.io, self.allocator, hostname.bytes, port) catch return error.DnsResolutionFailed;
+            const res = resolveHostToIp(self.io, self.allocator, hostname.bytes, port) catch |err| {
+                if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] resolveHostToIp failed: {any}\x1b[0m\n", .{err});
+                return error.DnsResolutionFailed;
+            };
             target_addr = res.address;
             dns_identity = res.canonical_name;
         }
@@ -99,19 +112,28 @@ pub const ProbeTask = struct {
         if (self.proxy_url) |p_url| {
             const connect_host = if (target_addr) |addr| blk: {
                 var ip_buf: [64]u8 = undefined;
-                break :blk try self.allocator.dupe(u8, try formatIp(&ip_buf, addr));
-            } else try self.allocator.dupe(u8, hostname.bytes);
+                break :blk self.allocator.dupe(u8, formatIp(&ip_buf, addr) catch "") catch return error.OutofMemory;
+            } else self.allocator.dupe(u8, hostname.bytes) catch return error.OutofMemory;
             defer self.allocator.free(connect_host);
 
-            stream = try self.connectViaProxy(p_url, connect_host, port, is_https);
+            stream = self.connectViaProxy(p_url, connect_host, port, is_https) catch |err| {
+                if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] connectViaProxy failed: {any}\x1b[0m\n", .{err});
+                return err;
+            };
         } else {
             const final_addr = if (target_addr) |addr| addr else blk: {
-                const res = resolveHostToIp(self.io, self.allocator, hostname.bytes, port) catch return error.DnsResolutionFailed;
+                const res = resolveHostToIp(self.io, self.allocator, hostname.bytes, port) catch |err| {
+                    if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] fallback resolveHostToIp failed: {any}\x1b[0m\n", .{err});
+                    return error.DnsResolutionFailed;
+                };
                 if (dns_identity == null) dns_identity = res.canonical_name;
                 break :blk res.address;
             };
             target_addr = final_addr;
-            stream = try self.connectWithTimeout(final_addr);
+            stream = self.connectWithTimeout(final_addr) catch |err| {
+                if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] connectWithTimeout failed: {any}\x1b[0m\n", .{err});
+                return err;
+            };
         }
         defer stream.close(self.io);
 
@@ -119,22 +141,25 @@ pub const ProbeTask = struct {
         errdefer if (final_identity) |id| self.allocator.free(id);
 
         if (self.forced_identity) |f_id| {
-            final_identity = try self.allocator.dupe(u8, f_id);
+            final_identity = self.allocator.dupe(u8, f_id) catch return error.OutofMemory;
         } else if (dns_identity) |cn| {
-            final_identity = try self.allocator.dupe(u8, cn);
+            final_identity = self.allocator.dupe(u8, cn) catch return error.OutofMemory;
         } else if (!is_ip_target) {
-            final_identity = try self.allocator.dupe(u8, hostname.bytes);
+            final_identity = self.allocator.dupe(u8, hostname.bytes) catch return error.OutofMemory;
         }
 
         const snipe_role = self.determineSnipeRole(is_https, is_ip_target);
 
         if (snipe_role != .none and target_addr != null) {
             var ip_buf: [64]u8 = undefined;
-            const ip_str = try formatIp(&ip_buf, target_addr.?);
+            const ip_str = formatIp(&ip_buf, target_addr.?) catch "";
 
             var snipe_scratch: [32768]u8 align(16) = undefined;
             var snipe_fba = FixedBufferAllocator.init(&snipe_scratch);
-            const disc_res = try Network.probeTlsIdentity(self.io, snipe_fba.allocator(), ip_str, port);
+            const disc_res = Network.probeTlsIdentity(self.io, snipe_fba.allocator(), ip_str, port) catch |err| {
+                if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] probeTlsIdentity threw error: {any}\x1b[0m\n", .{err});
+                return err;
+            };
 
             if (disc_res) |disc| {
                 if (snipe_role == .verification and self.forced_identity == null) {
@@ -142,7 +167,7 @@ pub const ProbeTask = struct {
                     if (!mem.eql(u8, disc, check_name)) return error.IdentityVerificationFailed;
                 } else if (snipe_role == .discovery and self.forced_identity == null) {
                     if (final_identity) |old| self.allocator.free(old);
-                    final_identity = try self.allocator.dupe(u8, disc);
+                    final_identity = self.allocator.dupe(u8, disc) catch return error.OutofMemory;
                 }
             } else if (snipe_role == .discovery and self.forced_identity == null) {
                 return error.IdentityDiscoveryFailed;
@@ -154,15 +179,18 @@ pub const ProbeTask = struct {
         var client = Client{
             .allocator = client_fba.allocator(),
             .io = self.io,
-            .ca_bundle = .empty,
+            .ca_bundle = if (Store.shared_ca_bundle) |b| b.* else .empty,
             .now = Clock.real.now(self.io),
         };
-        defer client.deinit();
+
+        if (self.debug) {
+            debug.print("\x1b[92m[PROBE-DEBUG] CA bundle rescan completed (Memory used: {d} bytes).\x1b[0m\n", .{client_fba.end_index});
+        }
 
         if (self.proxy_url) |p_url| {
-            const p_uri = try Uri.parse(p_url);
+            const p_uri = Uri.parse(p_url) catch return error.InvalidUrl;
             var p_host_buf: [HostName.max_len]u8 = undefined;
-            const p_host = try p_uri.getHost(&p_host_buf);
+            const p_host = p_uri.getHost(&p_host_buf) catch return error.InvalidUrl;
             var proxy_stack = Client.Proxy{
                 .protocol = if (mem.eql(u8, p_uri.scheme, "https")) .tls else .plain,
                 .host = p_host,
@@ -177,36 +205,65 @@ pub const ProbeTask = struct {
         const identity_to_use = final_identity orelse hostname.bytes;
         const current_target_str = if (target_addr) |addr| blk: {
             var buf: [64]u8 = undefined;
-            break :blk try self.allocator.dupe(u8, try formatIp(&buf, addr));
-        } else try self.allocator.dupe(u8, hostname.bytes);
+            break :blk self.allocator.dupe(u8, formatIp(&buf, addr) catch "") catch return error.OutofMemory;
+        } else self.allocator.dupe(u8, hostname.bytes) catch return error.OutofMemory;
         defer self.allocator.free(current_target_str);
 
-        const conn = try client.connectTcpOptions(.{
+        if (self.debug) {
+            debug.print("\x1b[96m[PROBE-DEEP-DEBUG] Attempting connectTcpOptions for host: {s}, proxied_host: {s}, port: {d}, protocol: {s}\x1b[0m\n", .{
+                current_target_str,
+                identity_to_use,
+                port,
+                if (is_https) "tls" else "plain",
+            });
+        }
+
+        const conn = client.connectTcpOptions(.{
             .host = .{ .bytes = current_target_str },
             .port = port,
             .protocol = if (is_https) .tls else .plain,
             .proxied_host = HostName{ .bytes = identity_to_use },
-        });
+        }) catch |err| {
+            if (self.debug) {
+                debug.print("\x1b[91m[PROBE-DEEP-DEBUG] ❌ connectTcpOptions FAILED!\x1b[0m\n", .{});
+                debug.print("\x1b[91m[PROBE-DEEP-DEBUG] Returned Error: {any} (Name: {s})\x1b[0m\n", .{ err, @errorName(err) });
+            }
+            return err;
+        };
 
-        var req = try client.request(.GET, uri, .{
+        if (self.debug) {
+            debug.print("\x1b[92m[PROBE-DEEP-DEBUG] ✅ connectTcpOptions SUCCEEDED!\x1b[0m\n", .{});
+        }
+
+        var req = client.request(.GET, uri, .{
             .connection = conn,
             .redirect_behavior = .unhandled,
-        });
+        }) catch |err| {
+            if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] client.request failed: {any}\x1b[0m\n", .{err});
+            return err;
+        };
         defer req.deinit();
-        try req.sendBodiless();
+
+        req.sendBodiless() catch |err| {
+            if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] req.sendBodiless failed: {any}\x1b[0m\n", .{err});
+            return err;
+        };
 
         var head_buf: [1024]u8 = undefined;
-        const response = try req.receiveHead(&head_buf);
+        const response = req.receiveHead(&head_buf) catch |err| {
+            if (self.debug) debug.print("\x1b[91m[PROBE-DEBUG] req.receiveHead failed: {any}\x1b[0m\n", .{err});
+            return err;
+        };
 
         const class = response.head.status.class();
         if (class != .success and class != .redirect) {
-            if (self.debug) debug.print("\x1b[31m[DEBUG]\x1b[0m Probe Rejected: Status {d} {s}\n", .{ @intFromEnum(response.head.status), response.head.reason });
+            if (self.debug) debug.print("\x1b[31m[PROBE-DEBUG] Probe Rejected: Status {d} {s}\n", .{ @intFromEnum(response.head.status), response.head.reason });
             return error.TargetRejected;
         }
 
         const final_ip_str = if (target_addr) |addr| blk: {
             var buf: [64]u8 = undefined;
-            break :blk try self.allocator.dupe(u8, try formatIp(&buf, addr));
+            break :blk self.allocator.dupe(u8, formatIp(&buf, addr) catch "") catch return error.OutofMemory;
         } else null;
 
         return .{
@@ -263,10 +320,13 @@ pub const ProbeTask = struct {
             var client = Client{
                 .allocator = client_fba.allocator(),
                 .io = self.io,
-                .ca_bundle = .empty,
+                .ca_bundle = if (Store.shared_ca_bundle) |b| b.* else .empty,
                 .now = Clock.real.now(self.io),
             };
-            defer client.deinit();
+
+            if (self.debug) {
+                debug.print("\x1b[92m[PROBE-DEBUG] CA bundle rescan completed (Memory used: {d} bytes).\x1b[0m\n", .{client_fba.end_index});
+            }
             _ = client.connect(HostName{ .bytes = p_host }, p_port, .tls) catch return error.ProxyProtocolMismatch;
         }
 
