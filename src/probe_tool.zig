@@ -49,12 +49,11 @@ pub fn run(io: Io, allocator: Allocator, debug_enabled: bool) !void {
 
     debug.print("\n{s}🚀 [TOOL] Starting Real-time Network Matrix Probe...{s}\n", .{ CLR_MET, CLR_RST });
 
-    Store.init(io, allocator, try allocator.alloc(u8, root.MIN_SCRATCH_SIZE), try allocator.alloc(u8, root.NET_CLIENT_BUF_SIZE), try allocator.alloc(u8, root.NET_REQ_BUF_SIZE), root.DEFAULT_MAX_SEEN);
+    Store.init(io, allocator, try allocator.alloc(u8, root.MIN_SCRATCH_SIZE), try allocator.alloc(u8, root.NET_REQ_BUF_SIZE), root.DEFAULT_MAX_SEEN);
     Store.debug_mode = debug_enabled;
 
     defer Store.deinit(io);
     defer allocator.free(Store.scratch_buffer);
-    defer allocator.free(Store.net_client_fba.buffer);
     defer allocator.free(Store.net_req_fba.buffer);
 
     const sniper_io = Network.createSniperIo(io);

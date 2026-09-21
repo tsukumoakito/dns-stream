@@ -3,16 +3,16 @@ SPDX-FileCopyrightText: 2026 TSUKUMO Akito <tsukumoakito99@duck.com>
 SPDX-License-Identifier: MIT
 -->
 
-# v1.0.3: The Hybrid Observer Genesis
+# v1.0.4: The Hybrid Observer Genesis
 
-We are pleased to announce the initial release of **DNS Stream v1.0.3**.
+We are pleased to announce the initial release of **DNS Stream v1.0.4**.
 This version marks the birth of a dedicated high-fidelity DNS traffic observer, designed to extract the "Ground Truth" of network activity through a unique hybrid architectural approach.
 
-> **Note:** v1.0.3 establishes the foundation of our "Sniper" network engine, ensuring that DNS observability remains intact even across complex proxy-layered infrastructures.
+> **Note:** v1.0.4 establishes the foundation of our "Sniper" network engine, ensuring that DNS observability remains intact even across complex proxy-layered infrastructures.
 
 ## 🚀 Strategic Milestone: Hybrid Observability
 
-`DNS Stream` is built on the philosophy that logs should be immediate, accurate, and secure. Version 1.0.3 introduces the **Hybrid Discovery Mode**, which bridges the gap between cold storage and live streams. By instantly recovering past events via memory-mapped local files and then hot-swapping to real-time Web APIs, it provides a seamless timeline of network truth without the latency of traditional polling.
+`DNS Stream` is built on the philosophy that logs should be immediate, accurate, and secure. Version 1.0.4 introduces the **Hybrid Discovery Mode**, which bridges the gap between cold storage and live streams. By instantly recovering past events via memory-mapped local files and then hot-swapping to real-time Web APIs, it provides a seamless timeline of network truth without the latency of traditional polling.
 
 ## ✨ Key Features of DNS Stream
 
@@ -48,15 +48,15 @@ As this is the genesis release, we are looking forward to:
 
 ---
 
-**DNS Stream v1.0.3 リリースのお知らせ**
+**DNS Stream v1.0.4 リリースのお知らせ**
 
-ハイパフォーマンスなDNSトラフィック・オブザーバーである **DNS Stream v1.0.3** の初回リリースをご報告いたします。本バージョンは、独自のハイブリッド・アーキテクチャを通じて、ネットワーク・アクティビティの「唯一の真実（Ground Truth）」を抽出するための新たな基準を確立します。
+ハイパフォーマンスなDNSトラフィック・オブザーバーである **DNS Stream v1.0.4** の初回リリースをご報告いたします。本バージョンは、独自のハイブリッド・アーキテクチャを通じて、ネットワーク・アクティビティの「唯一の真実（Ground Truth）」を抽出するための新たな基準を確立します。
 
-> **補足:** v1.0.3 は、当プロジェクトのコアである「スナイパー」ネットワークエンジンの基盤を構築し、複雑なプロキシ階層が存在する環境下でもDNSの観測性を損なわない仕組みを提供します。
+> **補足:** v1.0.4 は、当プロジェクトのコアである「スナイパー」ネットワークエンジンの基盤を構築し、複雑なプロキシ階層が存在する環境下でもDNSの観測性を損なわない仕組みを提供します。
 
 ## 🚀 戦略的マイルストーン：ハイブリッド・オブザべビリティ
 
-`DNS Stream` は、ログは即時的で正確、かつセキュアであるべきだという哲学に基づいています。v1.0.3 では、コールドストレージとライブストリームの溝を埋める **ハイブリッド・ディスカバリー・モード** を導入しました。メモリマッピングされたローカルファイルから過去のイベントを即座に復元し、リアルタイムWeb APIへホットスワップすることで、従来のポーリングのような遅延を感じさせないシームレスなネットワーク監視を実現します。
+`DNS Stream` は、ログは即時的で正確、かつセキュアであるべきだという哲学に基づいています。v1.0.4 では、コールドストレージとライブストリームの溝を埋める **ハイブリッド・ディスカバリー・モード** を導入しました。メモリマッピングされたローカルファイルから過去のイベントを即座に復元し、リアルタイムWeb APIへホットスワップすることで、従来のポーリングのような遅延を感じさせないシームレスなネットワーク監視を実現します。
 
 ## ✨ DNS Stream の主な特徴
 

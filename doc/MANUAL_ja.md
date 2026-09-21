@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 TSUKUMO Akito <tsukumoakito99@duck.com>
 SPDX-License-Identifier: MIT
 -->
 
-# DNS Stream ユーザマニュアル (v1.0.3 / 2026-09-22)
+# DNS Stream ユーザマニュアル (v1.0.4 / 2026-09-22)
 
 **DNS Stream** は、リアルタイムで高精度なDNSトラフィック・ストリームを提供するために設計された、特殊なハイブリッド・リレーおよび可視化エンジンです。AdGuardHome (AGH) 環境に最適化されており、複雑なプロキシ・チェーンを経由した場合でも高い観測性を確保するための高度なネットワーキング・フックを実装しています。
 

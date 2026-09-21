@@ -24,7 +24,6 @@ pub var state_lock: RwLock = .init;
 
 pub var scratch_fba: FixedBufferAllocator = undefined;
 pub var scratch_buffer: []u8 = undefined;
-pub var net_client_fba: FixedBufferAllocator = undefined;
 pub var net_req_fba: FixedBufferAllocator = undefined;
 
 pub var querylog_mmap: ?File.MemoryMap = null;
@@ -225,11 +224,10 @@ pub var ip_color_rules_count: usize = 0;
 pub var allocator: Allocator = undefined;
 pub const keyring_key_name = "dns-stream-auth-key";
 
-pub fn init(io: Io, base_allocator: Allocator, scratch_buf: []u8, net_client_raw_buf: []u8, net_req_raw_buf: []u8, max_seen: usize) void {
+pub fn init(io: Io, base_allocator: Allocator, scratch_buf: []u8, net_req_raw_buf: []u8, max_seen: usize) void {
     allocator = base_allocator;
     scratch_fba = FixedBufferAllocator.init(scratch_buf);
     scratch_buffer = scratch_buf;
-    net_client_fba = FixedBufferAllocator.init(net_client_raw_buf);
     net_req_fba = FixedBufferAllocator.init(net_req_raw_buf);
     seen_buffer = SeenBuffer.init(base_allocator, max_seen) catch
         SeenBuffer.init(base_allocator, constants.DEFAULT_MAX_SEEN) catch
@@ -327,7 +325,6 @@ pub fn appendDiagnosticStats(ui_collector: *Collector, diag: anytype) !void {
     try diag.appendStatRow(ui_collector.terminal, ui_collector, "IP Filters", filter_ips_count, constants.MAX_FILTERS, " rules");
     try diag.appendStatRow(ui_collector.terminal, ui_collector, "Name Filters", filter_names_count, constants.MAX_FILTERS, " rules");
     try diag.appendStatRow(ui_collector.terminal, ui_collector, "IP Color Rules", ip_color_rules_count, constants.MAX_COLOR_RULES, " rules");
-    try diag.appendStatRow(ui_collector.terminal, ui_collector, "Net Client FBA", net_client_fba.end_index, net_client_fba.buffer.len, "");
     try diag.appendStatRow(ui_collector.terminal, ui_collector, "Net Request FBA", net_req_fba.end_index, net_req_fba.buffer.len, "");
     try diag.appendStatRow(ui_collector.terminal, ui_collector, "Session Trash", session_trash_count, 16, " items");
 }

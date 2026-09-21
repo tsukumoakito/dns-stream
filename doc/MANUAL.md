@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 TSUKUMO Akito <tsukumoakito99@duck.com>
 SPDX-License-Identifier: MIT
 -->
 
-# DNS Stream User Manual (v1.0.3 / 2026-09-22)
+# DNS Stream User Manual (v1.0.4 / 2026-09-22)
 
 **DNS Stream** is a specialized hybrid relay and visualization engine designed to provide a real-time, high-fidelity stream of DNS traffic. It is optimized for AdGuardHome (AGH) environments and implements advanced networking hooks to ensure observability even through complex proxy chains.
 
