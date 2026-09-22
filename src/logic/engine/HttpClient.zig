@@ -213,9 +213,11 @@ pub fn fetchApiToBuffer(client: *Client, url_str: []const u8, auth: []const u8, 
     if (Store.debug_mode) {
         var s_buf: [32]u8 = undefined;
         const size_str = Store.formatSize(&s_buf, body_len);
-        debug.print("\x1b[90m[DEBUG]\x1b[0m API Request: {s} (Buffer: {s})\n", .{
+        debug.print("\x1b[90m[DEBUG]\x1b[0m API Request: {s} (Buffer: {s}, NetClientFBA used: {d} / {d} bytes)\n", .{
             url_str,
             size_str,
+            Store.net_client_fba.end_index,
+            Store.net_client_fba.buffer.len,
         });
     }
 

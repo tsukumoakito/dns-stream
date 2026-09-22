@@ -334,8 +334,9 @@ pub fn start(
             const saved_bundle = client.ca_bundle;
             client.ca_bundle = .empty;
             client.deinit();
+            Store.net_client_fba.reset();
             client.* = Client{
-                .allocator = Store.allocator,
+                .allocator = Store.net_client_fba.allocator(),
                 .io = io,
                 .ca_bundle = saved_bundle,
                 .now = Clock.real.now(io),
@@ -363,6 +364,7 @@ pub fn start(
                 Store.session_trash_count -= 1;
             }
             if (now - last_rotation_ts >= constants.SESSION_ROTATION_S) {
+                Store.net_client_fba.reset();
                 var rot_scratch: [8192]u8 align(4096) = undefined;
                 defer crypto.secureZero(u8, &rot_scratch);
                 var rot_fba = FixedBufferAllocator.init(&rot_scratch);
@@ -415,7 +417,8 @@ pub fn start(
                 const saved_bundle = client.ca_bundle;
                 client.ca_bundle = .empty;
                 client.deinit();
-                client.* = Client{ .allocator = Store.allocator, .io = io, .ca_bundle = saved_bundle, .now = Clock.real.now(io) };
+                Store.net_client_fba.reset();
+                client.* = Client{ .allocator = Store.net_client_fba.allocator(), .io = io, .ca_bundle = saved_bundle, .now = Clock.real.now(io) };
                 if (err == error.Unauthorized) {
                     var login_url_buf: [512]u8 = undefined;
                     const login_endpoint = try fmt.bufPrint(&login_url_buf, "{s}/login", .{api_url});
