@@ -90,6 +90,7 @@ pub fn main(init: process.Init) !void {
     const scratch_size = @max(@as(usize, config.api_limit) * root.JSON_ENTRY_SIZE_HINT, root.MIN_SCRATCH_SIZE);
 
     const dynamic_scratch = try arena.alignedAlloc(u8, align_16, scratch_size);
+    const net_client_buf = try arena.alignedAlloc(u8, align_16, root.NET_CLIENT_BUF_SIZE);
     const net_req_buf = try arena.alignedAlloc(u8, align_16, root.NET_REQ_BUF_SIZE);
 
     var io_group = Group.init;
@@ -113,7 +114,7 @@ pub fn main(init: process.Init) !void {
     var diag = DiagContext.fromSystemArgs(&it_diag);
     defer diag.deinit(init.io);
 
-    Store.init(io, base_allocator, dynamic_scratch, net_req_buf, config.max_seen);
+    Store.init(io, base_allocator, dynamic_scratch, net_client_buf, net_req_buf, config.max_seen);
     Store.debug_mode = debug_enabled;
 
     Stream.syncDebugMode(diag.enabled, DiagContext.formatSizeBuf);
@@ -145,7 +146,7 @@ pub fn main(init: process.Init) !void {
     };
 
     var http_client = Client{
-        .allocator = base_allocator,
+        .allocator = Store.net_client_fba.allocator(),
         .io = sniper_io,
         .ca_bundle = .empty,
         .now = Clock.real.now(sniper_io),

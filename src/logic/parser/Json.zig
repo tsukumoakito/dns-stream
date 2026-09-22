@@ -131,7 +131,7 @@ pub fn getOldestTimestampInChunk(raw_json: []const u8) ?[]const u8 {
 pub fn processJsonBulkReverse(raw_json: []const u8, callback: *const fn (Allocator, []const u8) anyerror!void) !void {
     var scanner = Scanner.initCompleteInput(Store.allocator, raw_json);
     defer scanner.deinit();
-    const la = Store.allocator;
+    const la = Store.net_client_fba.allocator();
     var list: ArrayList([]const u8) = .empty;
     defer list.deinit(la);
     if ((scanner.next() catch return) != .object_begin) {

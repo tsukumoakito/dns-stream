@@ -25,6 +25,7 @@ pub const MAX_COLOR_RULES = 32;
 pub const API_MAX_LIMIT = 5000;
 pub const JSON_ENTRY_SIZE_HINT = 1024;
 pub const MIN_SCRATCH_SIZE = 512 * 1024;
+pub const NET_CLIENT_BUF_SIZE = 512 * 1024;
 pub const NET_REQ_BUF_SIZE = 256;
 pub const DEFAULT_API_MAX_CATCHUP = 50000;
 pub const SESSION_ROTATION_S = 30 * 60;
@@ -43,10 +44,13 @@ test "Network Matrix Verification" {
     const scratch = try allocator.alloc(u8, MIN_SCRATCH_SIZE);
     defer allocator.free(scratch);
 
+    const net_client = try allocator.alloc(u8, NET_CLIENT_BUF_SIZE);
+    defer allocator.free(net_client);
+
     const net_req = try allocator.alloc(u8, 1024);
     defer allocator.free(net_req);
 
-    S.init(io, allocator, scratch, net_req, DEFAULT_MAX_SEEN);
+    S.init(io, allocator, scratch, net_client, net_req, DEFAULT_MAX_SEEN);
     defer S.deinit(io);
 
     const NetworkTest = @import("logic/NetworkTest.zig");
@@ -93,9 +97,10 @@ test "Network Probe Matrix Verification" {
 
     debug.print("\n{s}🚀 [TEST] Starting Network Matrix Test...{s}\n", .{ CLR_MET, CLR_RST });
 
-    Store.init(io, allocator, try allocator.alloc(u8, MIN_SCRATCH_SIZE), try allocator.alloc(u8, 1024), DEFAULT_MAX_SEEN);
+    Store.init(io, allocator, try allocator.alloc(u8, MIN_SCRATCH_SIZE), try allocator.alloc(u8, NET_CLIENT_BUF_SIZE), try allocator.alloc(u8, 1024), DEFAULT_MAX_SEEN);
     defer Store.deinit(io);
     defer allocator.free(Store.scratch_buffer);
+    defer allocator.free(Store.net_client_fba.buffer);
     defer allocator.free(Store.net_req_fba.buffer);
 
     for (cases) |tc| {

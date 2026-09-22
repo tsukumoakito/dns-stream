@@ -110,7 +110,7 @@ pub fn streamFromFile(io: Io, _: Allocator, log_path: []const u8, start_ts: []co
         }
         if (mem.order(u8, item_ts, start_ts) == .gt) {
             if (!Format.isExcessiveFuture(io, item_ts)) {
-                try LogLine.displayLogItemRaw(&terminal, io, Store.allocator, line, term_w, w, false, no_color);
+                try LogLine.displayLogItemRaw(&terminal, io, Store.net_client_fba.allocator(), line, term_w, w, false, no_color);
                 const safe_len = @min(item_ts.len, Store.last_seen_ts.len);
                 @memcpy(Store.last_seen_ts[0..safe_len], item_ts[0..safe_len]);
                 Store.last_seen_ts_len = safe_len;
